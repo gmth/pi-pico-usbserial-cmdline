@@ -45,11 +45,6 @@ target_link_libraries(${PROJECT_NAME}
 pico_generate_pio_header(${PROJECT_NAME} ${CMAKE_CURRENT_LIST_DIR}/src/pio/uart_rx.pio)
 pico_generate_pio_header(${PROJECT_NAME} ${CMAKE_CURRENT_LIST_DIR}/src/pio/uart_tx.pio)
 
-add_custom_target( ${PROJECT_NAME}_install 
-    COMMAND cp ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.uf2 /run/media/thijs/RPI-RP2/
-    DEPENDS ${PROJECT_NAME}
-)
-
 # create map/bin/hex file etc.
 pico_add_extra_outputs(uart_bridge)
 
