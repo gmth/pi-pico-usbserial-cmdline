@@ -13,6 +13,8 @@
 #include <string.h>
 #include <tusb.h>
 
+#include "cli/cli.h"
+
 #include "uart_rx.pio.h"
 #include "uart_tx.pio.h"
 
@@ -56,12 +58,22 @@ typedef struct {
 	mutex_t usb_mtx;
 } uart_data_t;
 
-#define NUM_HW_UARTS_SUPPORTED 2
 #define NUM_USB_DEVICES_SUPPORTED CFG_TUD_CDC
-#define NUM_PIO_UARTS_SUPPORTED ((CFG_TUD_CDC) - (NUM_HW_UARTS_SUPPORTED))
+#define NUM_UARTS_SUPPORTED ((NUM_USB_DEVICES_SUPPORTED) - 1)
+
+#define NUM_HW_UARTS_SUPPORTED 2
+#define NUM_PIO_UARTS_SUPPORTED ((NUM_UARTS_SUPPORTED) - (NUM_HW_UARTS_SUPPORTED))
 #if (NUM_PIO_UARTS_SUPPORTED < 0)
 	#error "More HW Uarts configured as supported than USB CDC devices exposed"
 #endif
+
+#define START_ITF_HW_UART   0
+#define END_ITF_HW_UART     ((START_ITF_HW_UART) + (NUM_HW_UARTS_SUPPORTED))
+#define START_ITF_PIO_UART  END_ITF_HW_UART
+#define END_ITF_PIO_UART    ((START_ITF_PIO_UART) + (NUM_PIO_UARTS_SUPPORTED))
+#define START_ITF_CLI       END_ITF_PIO_UART
+#define END_ITF_CLI         START_ITF_CLI + 1
+
 
 const uart_id_t UART_ID[NUM_USB_DEVICES_SUPPORTED] = {
 	{
@@ -286,6 +298,23 @@ void pio_uart_write_bytes(uint8_t itf) {
 }
 
 
+void run_cli() {
+	int itf = START_ITF_CLI;
+
+	uart_data_t *ud = &UART_DATA[itf];
+	
+	if (ud->usb_pos) {
+
+		mutex_enter_blocking(&ud->usb_mtx);
+		cli_putn(ud->usb_buffer, ud->usb_pos);
+		ud->usb_pos = 0;
+		mutex_exit(&ud->usb_mtx);
+
+		cli_update();
+	}
+}
+
+
 void init_uart_data(uint8_t itf) {
 	const uart_id_t *ui = &UART_ID[itf];
 	uart_data_t *ud = &UART_DATA[itf];
@@ -342,6 +371,21 @@ void init_common_data(uint8_t itf)
 }
 
 
+void send_char(char c)
+{
+	int itf = 2;
+	
+	uart_data_t *ud = &UART_DATA[itf];
+
+	mutex_enter_blocking(&ud->uart_mtx);
+	if (ud->uart_pos < BUFFER_SIZE) {
+		ud->uart_buffer[ud->uart_pos] = c;
+		ud->uart_pos++;
+	}
+	mutex_exit(&ud->uart_mtx);
+}
+
+
 int main(void)
 {
 	for (int itf = 0; itf < NUM_USB_DEVICES_SUPPORTED; itf++) {
@@ -356,22 +400,26 @@ int main(void)
 		init_pio_data(itf);
 	}
 
+	cli_init(send_char);
+
 	gpio_init(LED_PIN);
 	gpio_set_dir(LED_PIN, GPIO_OUT);
 
 	multicore_launch_core1(core1_entry);
 
 	while (1) {
-		for (int itf = 0; itf < NUM_HW_UARTS_SUPPORTED; itf++) {
+		for (int itf = START_ITF_HW_UART; itf < END_ITF_HW_UART; itf++) {
 			update_uart_cfg(itf);
 			uart_read_bytes(itf);
 			uart_write_bytes(itf);
 		}
-		
-		for (int itf = NUM_HW_UARTS_SUPPORTED; itf < NUM_USB_DEVICES_SUPPORTED; itf++) {
+
+		for (int itf = START_ITF_PIO_UART; itf < END_ITF_PIO_UART; itf++) {
 			pio_uart_read_bytes(itf);
 			pio_uart_write_bytes(itf);
 		}
+
+		run_cli();
 			
 	}
 
