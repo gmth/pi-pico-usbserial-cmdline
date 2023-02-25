@@ -14,6 +14,7 @@
 #include <tusb.h>
 
 #include "uart_rx.pio.h"
+#include "uart_tx.pio.h"
 
 void tud_task(void);
 
@@ -35,7 +36,8 @@ typedef struct {
 		uart_inst_t *const inst;
 		struct {
 			PIO pio;
-			int sm;
+			int rx_sm;
+			int tx_sm;
 		};
 	};
 	uint8_t tx_pin;
@@ -72,7 +74,8 @@ const uart_id_t UART_ID[NUM_USB_DEVICES_SUPPORTED] = {
 		.rx_pin = 5,
 	}, {
 		.pio = pio0,
-		.sm = 0,
+		.rx_sm = 0,
+		.tx_sm = 1,
 		.tx_pin = 8,
 		.rx_pin = 9,
 	}
@@ -255,13 +258,30 @@ void pio_uart_read_bytes(uint8_t itf) {
 	const uart_id_t *ui = &UART_ID[itf];
 	uart_data_t *ud = &UART_DATA[itf];
 
-	if (uart_rx_program_hasdata(ui->pio, ui->sm)) { 
+	if (uart_rx_program_hasdata(ui->pio, ui->rx_sm)) { 
 		mutex_enter_blocking(&ud->uart_mtx);
-		while (uart_rx_program_hasdata(ui->pio, ui->sm) && (ud->uart_pos < BUFFER_SIZE)) {
-			ud->uart_buffer[ud->uart_pos] = uart_rx_program_getc(ui->pio, ui->sm);
+		while (uart_rx_program_hasdata(ui->pio, ui->rx_sm) && (ud->uart_pos < BUFFER_SIZE)) {
+			ud->uart_buffer[ud->uart_pos] = uart_rx_program_getc(ui->pio, ui->rx_sm);
 			ud->uart_pos++;
 		}
 		mutex_exit(&ud->uart_mtx);
+	}
+}
+
+
+void pio_uart_write_bytes(uint8_t itf) {
+	uart_data_t *ud = &UART_DATA[itf];
+
+	if (ud->usb_pos) {
+		const uart_id_t *ui = &UART_ID[itf];
+
+		mutex_enter_blocking(&ud->usb_mtx);
+
+		ud->usb_buffer[ud->usb_pos] = 0;
+		uart_tx_program_puts(ui->pio, ui->tx_sm, ud->usb_buffer);
+		ud->usb_pos = 0;
+
+		mutex_exit(&ud->usb_mtx);
 	}
 }
 
@@ -288,7 +308,10 @@ void init_pio_data(uint8_t itf)
 	const uart_id_t *ui = &UART_ID[itf];
 
     uint offset = pio_add_program(ui->pio, &uart_rx_program);
-    uart_rx_program_init(ui->pio, ui->sm, offset, ui->rx_pin, 115200);
+    uart_rx_program_init(ui->pio, ui->rx_sm, offset, ui->rx_pin, 115200);
+    
+	offset = pio_add_program(ui->pio, &uart_tx_program);
+    uart_tx_program_init(ui->pio, ui->tx_sm, offset, ui->tx_pin, 115200);
 }
 
 
@@ -347,6 +370,7 @@ int main(void)
 		
 		for (int itf = NUM_HW_UARTS_SUPPORTED; itf < NUM_USB_DEVICES_SUPPORTED; itf++) {
 			pio_uart_read_bytes(itf);
+			pio_uart_write_bytes(itf);
 		}
 			
 	}
