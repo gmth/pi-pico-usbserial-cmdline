@@ -90,6 +90,10 @@ const uart_id_t UART_ID[NUM_USB_DEVICES_SUPPORTED] = {
 		.tx_sm = 1,
 		.tx_pin = 8,
 		.rx_pin = 9,
+	}, {
+		.inst = NULL,				// CLI data: deliberate bad values to make sure it isn't accidentally used as uart/pio
+		.tx_pin = 255,				// CLI data: deliberate bad values to make sure it isn't accidentally used as uart/pio
+		.rx_pin = 255,				// CLI data: deliberate bad values to make sure it isn't accidentally used as uart/pio
 	}
 };
 
@@ -373,7 +377,7 @@ void init_common_data(uint8_t itf)
 
 void send_char(char c)
 {
-	int itf = 2;
+	int itf = START_ITF_CLI;
 	
 	uart_data_t *ud = &UART_DATA[itf];
 

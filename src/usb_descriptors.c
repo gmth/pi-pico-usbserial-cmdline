@@ -22,17 +22,21 @@
 #define USBD_ITF_CDC_0 0
 #define USBD_ITF_CDC_1 2
 #define USBD_ITF_CDC_2 4
-#define USBD_ITF_MAX 6
+#define USBD_ITF_CDC_3 6
+#define USBD_ITF_MAX 8
 
 #define USBD_CDC_0_EP_CMD 0x81
 #define USBD_CDC_1_EP_CMD 0x84
 #define USBD_CDC_2_EP_CMD 0x87
+#define USBD_CDC_3_EP_CMD 0x8A
 #define USBD_CDC_0_EP_OUT 0x02
 #define USBD_CDC_1_EP_OUT 0x05
 #define USBD_CDC_2_EP_OUT 0x08
+#define USBD_CDC_3_EP_OUT 0x0B
 #define USBD_CDC_0_EP_IN 0x82
 #define USBD_CDC_1_EP_IN 0x85
 #define USBD_CDC_2_EP_IN 0x88
+#define USBD_CDC_3_EP_IN 0x8B
 #define USBD_CDC_CMD_MAX_SIZE 8
 #define USBD_CDC_IN_OUT_MAX_SIZE 64
 
@@ -43,6 +47,7 @@
 #define USBD_STR_CDC0 0x04
 #define USBD_STR_CDC1 0x05
 #define USBD_STR_CDC2 0x06
+#define USBD_STR_CDC3 0x07
 
 static const tusb_desc_device_t usbd_desc_device = {
 	.bLength = sizeof(tusb_desc_device_t),
@@ -76,6 +81,10 @@ static const uint8_t usbd_desc_cfg[USBD_DESC_LEN] = {
 	TUD_CDC_DESCRIPTOR(USBD_ITF_CDC_2, USBD_STR_CDC2, USBD_CDC_2_EP_CMD,
 		USBD_CDC_CMD_MAX_SIZE, USBD_CDC_2_EP_OUT, USBD_CDC_2_EP_IN,
 		USBD_CDC_IN_OUT_MAX_SIZE),
+
+ 	TUD_CDC_DESCRIPTOR(USBD_ITF_CDC_3, USBD_STR_CDC3, USBD_CDC_3_EP_CMD,
+ 		USBD_CDC_CMD_MAX_SIZE, USBD_CDC_3_EP_OUT, USBD_CDC_3_EP_IN,
+ 		USBD_CDC_IN_OUT_MAX_SIZE),
 };
 
 static const char *const usbd_desc_str[] = {
@@ -85,6 +94,7 @@ static const char *const usbd_desc_str[] = {
 	[USBD_STR_CDC0] = "Alpha Linux",
 	[USBD_STR_CDC1] = "Alpha M4",
 	[USBD_STR_CDC2] = "Alpha M4 TP",
+	[USBD_STR_CDC3] = "Alpha CLI",
 };
 
 const uint8_t *tud_descriptor_device_cb(void)
