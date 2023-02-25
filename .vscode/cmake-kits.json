@@ -1,0 +1,10 @@
+[
+{
+    "name": "pi-pico",
+    
+    "cmakeSettings": {
+        "TARGET_SOC": "rp2040",
+        "PICO_SDK_PATH": "${workspaceRoot}/../pico-sdk"
+    }
+}
+]

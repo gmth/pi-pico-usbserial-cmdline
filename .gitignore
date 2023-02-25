@@ -1,0 +1,11 @@
+build/*
+.cache/*
+*.txt
+
+# vscode stuff
+compile_commands.json
+
+# vim stuff
+*.swp
+*.swo
+
