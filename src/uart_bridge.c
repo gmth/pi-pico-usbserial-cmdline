@@ -45,7 +45,14 @@ typedef struct {
 	mutex_t usb_mtx;
 } uart_data_t;
 
-const uart_id_t UART_ID[CFG_TUD_CDC] = {
+#define NUM_HW_UARTS_SUPPORTED 2
+#define NUM_USB_DEVICES_SUPPORTED CFG_TUD_CDC
+#define NUM_PIO_UARTS_SUPPORTED ((CFG_TUD_CDC) - (NUM_HW_UARTS_SUPPORTED))
+#if (NUM_PIO_UARTS_SUPPORTED < 0)
+	#error "More HW Uarts configured as supported than USB CDC devices exposed"
+#endif
+
+const uart_id_t UART_ID[NUM_USB_DEVICES_SUPPORTED] = {
 	{
 		.inst = uart0,
 		.tx_pin = 0,
@@ -57,7 +64,7 @@ const uart_id_t UART_ID[CFG_TUD_CDC] = {
 	}
 };
 
-uart_data_t UART_DATA[CFG_TUD_CDC];
+uart_data_t UART_DATA[NUM_USB_DEVICES_SUPPORTED];
 
 static inline uint databits_usb2uart(uint8_t data_bits)
 {
@@ -185,7 +192,7 @@ void core1_entry(void)
 
 		tud_task();
 
-		for (itf = 0; itf < CFG_TUD_CDC; itf++) {
+		for (itf = 0; itf < NUM_USB_DEVICES_SUPPORTED; itf++) {
 			if (tud_cdc_n_connected(itf)) {
 				con = 1;
 				usb_cdc_process(itf);
@@ -270,7 +277,7 @@ int main(void)
 {
 	int itf;
 
-	for (itf = 0; itf < CFG_TUD_CDC; itf++)
+	for (itf = 0; itf < NUM_HW_UARTS_SUPPORTED; itf++)
 		init_uart_data(itf);
 
 	gpio_init(LED_PIN);
@@ -279,7 +286,7 @@ int main(void)
 	multicore_launch_core1(core1_entry);
 
 	while (1) {
-		for (itf = 0; itf < CFG_TUD_CDC; itf++) {
+		for (itf = 0; itf < NUM_HW_UARTS_SUPPORTED; itf++) {
 			update_uart_cfg(itf);
 			uart_read_bytes(itf);
 			uart_write_bytes(itf);
