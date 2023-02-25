@@ -14,6 +14,7 @@
 #include <tusb.h>
 
 #include "cli/cli.h"
+#include "cli/alpha_power_modes.h""
 
 #include "uart_rx.pio.h"
 #include "uart_tx.pio.h"
@@ -392,6 +393,7 @@ void send_char(char c)
 
 int main(void)
 {
+	apm_init(2, 3);
 	for (int itf = 0; itf < NUM_USB_DEVICES_SUPPORTED; itf++) {
 		init_common_data(itf);
 	}

@@ -1,5 +1,7 @@
-#include <stdlib.h>
 #include "embedded_cli.h"
+
+#include <stdlib.h>
+#include "alpha_power_modes.h"
 
 static EmbeddedCli *g_cli = NULL;
 static void (*g_send_char_func)(char c) = NULL;
@@ -11,12 +13,14 @@ static void writeChar(EmbeddedCli *cli, char c)
 }
 
 
-static void on_recovery(EmbeddedCli *cli, char *args, void *context) {
-    embeddedCliPrint(cli, "Running recovery..");
+static void on_recovery(EmbeddedCli *cli, char *args, void *context) 
+{
+    apm_do_recovery();
 }
 
-static void on_reset(EmbeddedCli *cli, char *args, void *context) {
-    embeddedCliPrint(cli, "Running reset..");
+static void on_reset(EmbeddedCli *cli, char *args, void *context) 
+{
+    apm_do_reset();
 }
 
 

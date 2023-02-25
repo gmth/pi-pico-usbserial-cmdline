@@ -25,6 +25,7 @@ add_executable(${PROJECT_NAME}
     ${CMAKE_CURRENT_SOURCE_DIR}/src/uart_bridge.c
     ${CMAKE_CURRENT_SOURCE_DIR}/src/usb_descriptors.c
     ${CMAKE_CURRENT_SOURCE_DIR}/src/cli/cli.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/cli/alpha_power_modes.c
 )
 
 target_include_directories(${PROJECT_NAME}
