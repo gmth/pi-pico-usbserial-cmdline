@@ -5,12 +5,15 @@
 
 #include "class/cdc/cdc.h"
 #include <hardware/irq.h>
+#include <hardware/pio.h>
 #include <hardware/structs/sio.h>
 #include <hardware/uart.h>
 #include <pico/multicore.h>
 #include <pico/stdlib.h>
 #include <string.h>
 #include <tusb.h>
+
+#include "uart_rx.pio.h"
 
 void tud_task(void);
 
@@ -28,7 +31,13 @@ void tud_task(void);
 #define DEF_DATA_BITS 8
 
 typedef struct {
-	uart_inst_t *const inst;
+	union {
+		uart_inst_t *const inst;
+		struct {
+			PIO pio;
+			int sm;
+		};
+	};
 	uint8_t tx_pin;
 	uint8_t rx_pin;
 } uart_id_t;
@@ -61,6 +70,11 @@ const uart_id_t UART_ID[NUM_USB_DEVICES_SUPPORTED] = {
 		.inst = uart1,
 		.tx_pin = 4,
 		.rx_pin = 5,
+	}, {
+		.pio = pio0,
+		.sm = 0,
+		.tx_pin = 8,
+		.rx_pin = 9,
 	}
 };
 
@@ -236,6 +250,22 @@ void uart_write_bytes(uint8_t itf) {
 	}
 }
 
+
+void pio_uart_read_bytes(uint8_t itf) {
+	const uart_id_t *ui = &UART_ID[itf];
+	uart_data_t *ud = &UART_DATA[itf];
+
+	if (uart_rx_program_hasdata(ui->pio, ui->sm)) { 
+		mutex_enter_blocking(&ud->uart_mtx);
+		while (uart_rx_program_hasdata(ui->pio, ui->sm) && (ud->uart_pos < BUFFER_SIZE)) {
+			ud->uart_buffer[ud->uart_pos] = uart_rx_program_getc(ui->pio, ui->sm);
+			ud->uart_pos++;
+		}
+		mutex_exit(&ud->uart_mtx);
+	}
+}
+
+
 void init_uart_data(uint8_t itf) {
 	const uart_id_t *ui = &UART_ID[itf];
 	uart_data_t *ud = &UART_DATA[itf];
@@ -243,6 +273,28 @@ void init_uart_data(uint8_t itf) {
 	/* Pinmux */
 	gpio_set_function(ui->tx_pin, GPIO_FUNC_UART);
 	gpio_set_function(ui->rx_pin, GPIO_FUNC_UART);
+
+	/* UART start */
+	uart_init(ui->inst, ud->usb_lc.bit_rate);
+	uart_set_hw_flow(ui->inst, false, false);
+	uart_set_format(ui->inst, databits_usb2uart(ud->usb_lc.data_bits),
+			stopbits_usb2uart(ud->usb_lc.stop_bits),
+			parity_usb2uart(ud->usb_lc.parity));
+}
+
+
+void init_pio_data(uint8_t itf) 
+{
+	const uart_id_t *ui = &UART_ID[itf];
+
+    uint offset = pio_add_program(ui->pio, &uart_rx_program);
+    uart_rx_program_init(ui->pio, ui->sm, offset, ui->rx_pin, 115200);
+}
+
+
+void init_common_data(uint8_t itf)
+{
+	uart_data_t *ud = &UART_DATA[itf];
 
 	/* USB CDC LC */
 	ud->usb_lc.bit_rate = DEF_BIT_RATE;
@@ -264,21 +316,22 @@ void init_uart_data(uint8_t itf) {
 	mutex_init(&ud->lc_mtx);
 	mutex_init(&ud->uart_mtx);
 	mutex_init(&ud->usb_mtx);
-
-	/* UART start */
-	uart_init(ui->inst, ud->usb_lc.bit_rate);
-	uart_set_hw_flow(ui->inst, false, false);
-	uart_set_format(ui->inst, databits_usb2uart(ud->usb_lc.data_bits),
-			stopbits_usb2uart(ud->usb_lc.stop_bits),
-			parity_usb2uart(ud->usb_lc.parity));
 }
+
 
 int main(void)
 {
-	int itf;
+	for (int itf = 0; itf < NUM_USB_DEVICES_SUPPORTED; itf++) {
+		init_common_data(itf);
+	}
 
-	for (itf = 0; itf < NUM_HW_UARTS_SUPPORTED; itf++)
+	for (int itf = 0; itf < NUM_HW_UARTS_SUPPORTED; itf++) {
 		init_uart_data(itf);
+	}
+	
+	for (int itf = NUM_HW_UARTS_SUPPORTED; itf < NUM_USB_DEVICES_SUPPORTED; itf++) {
+		init_pio_data(itf);
+	}
 
 	gpio_init(LED_PIN);
 	gpio_set_dir(LED_PIN, GPIO_OUT);
@@ -286,11 +339,16 @@ int main(void)
 	multicore_launch_core1(core1_entry);
 
 	while (1) {
-		for (itf = 0; itf < NUM_HW_UARTS_SUPPORTED; itf++) {
+		for (int itf = 0; itf < NUM_HW_UARTS_SUPPORTED; itf++) {
 			update_uart_cfg(itf);
 			uart_read_bytes(itf);
 			uart_write_bytes(itf);
 		}
+		
+		for (int itf = NUM_HW_UARTS_SUPPORTED; itf < NUM_USB_DEVICES_SUPPORTED; itf++) {
+			pio_uart_read_bytes(itf);
+		}
+			
 	}
 
 	return 0;
