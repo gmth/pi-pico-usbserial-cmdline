@@ -1,6 +1,5 @@
 build/*
 .cache/*
-*.txt
 
 # vscode stuff
 compile_commands.json
