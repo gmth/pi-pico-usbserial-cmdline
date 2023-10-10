@@ -3,7 +3,7 @@
 #include "pico/stdlib.h"
 
 #define TIME_MS_RESET_PIN_LOW       1000
-#define TIME_MS_RECOVERY_PIN_LOW    ((TIME_MS_RESET_PIN_LOW) + 500)
+#define TIME_MS_RECOVERY_PIN_LOW    ((TIME_MS_RESET_PIN_LOW) + 5000)
 
 static int g_pin_reset = -1;
 static int g_pin_recovery = -1;
