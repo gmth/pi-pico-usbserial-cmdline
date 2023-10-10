@@ -14,7 +14,7 @@
 #include <tusb.h>
 
 #include "cli/cli.h"
-#include "cli/alpha_power_modes.h""
+#include "cli/alpha_power_modes.h"
 
 #include "uart_rx.pio.h"
 #include "uart_tx.pio.h"
@@ -307,11 +307,10 @@ void run_cli() {
 	int itf = START_ITF_CLI;
 
 	uart_data_t *ud = &UART_DATA[itf];
-	
-	if (ud->usb_pos) {
 
+	if (ud->usb_pos) {
 		mutex_enter_blocking(&ud->usb_mtx);
-		cli_putn(ud->usb_buffer, ud->usb_pos);
+		cli_putn((const char *)ud->usb_buffer, ud->usb_pos);
 		ud->usb_pos = 0;
 		mutex_exit(&ud->usb_mtx);
 
@@ -401,7 +400,7 @@ int main(void)
 	for (int itf = 0; itf < NUM_HW_UARTS_SUPPORTED; itf++) {
 		init_uart_data(itf);
 	}
-	
+
 	for (int itf = NUM_HW_UARTS_SUPPORTED; itf < NUM_USB_DEVICES_SUPPORTED; itf++) {
 		init_pio_data(itf);
 	}
@@ -426,7 +425,7 @@ int main(void)
 		}
 
 		run_cli();
-			
+
 	}
 
 	return 0;

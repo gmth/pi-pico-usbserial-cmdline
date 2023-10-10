@@ -1,10 +1,9 @@
 [
-{
-    "name": "pi-pico",
-    
-    "cmakeSettings": {
-        "TARGET_SOC": "rp2040",
-        "PICO_SDK_PATH": "${workspaceRoot}/../pico-sdk"
+    {
+        "name": "pi-pico",
+        "cmakeSettings": {
+            "TARGET_SOC": "rp2040",
+            "PICO_SDK_PATH": "/opt/pico/pico-sdk"
+        }
     }
-}
 ]
